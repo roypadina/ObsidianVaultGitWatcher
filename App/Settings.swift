@@ -46,8 +46,8 @@ enum SettingsWindow {
 
 struct GeneralPane: View {
     @EnvironmentObject var store: ConfigStore
-    @State private var launchAtLogin = false
-    @State private var note: (text: String, isError: Bool)?
+    @SwiftUI.State private var launchAtLogin = false
+    @SwiftUI.State private var note: (text: String, isError: Bool)?
 
     var body: some View {
         Form {
@@ -215,8 +215,8 @@ enum LaunchAgent {
 
 struct VaultsPane: View {
     @EnvironmentObject var store: ConfigStore
-    @State private var removing: VaultConfig?
-    @State private var problem: String?
+    @SwiftUI.State private var removing: VaultConfig?
+    @SwiftUI.State private var problem: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -385,7 +385,7 @@ struct VaultDetail: View {
     @Binding var vault: VaultConfig
     let status: Status?
     let changeFolder: () -> Void
-    @State private var remotes: [String]?
+    @SwiftUI.State private var remotes: [String]?
 
     var folderName: String { (expand(vault.path) as NSString).lastPathComponent }
 
@@ -526,7 +526,7 @@ struct CheckedField: View {
     let prompt: String
     @Binding var value: String
     let check: (String) -> String?
-    @State private var draft: String?
+    @SwiftUI.State private var draft: String?
 
     var body: some View {
         let text = draft ?? value
@@ -547,7 +547,7 @@ struct CheckedField: View {
 
 struct IgnoreEditor: View {
     @Binding var entries: [String]
-    @State private var drafts: [String]?
+    @SwiftUI.State private var drafts: [String]?
 
     var body: some View {
         let rows = drafts ?? entries
