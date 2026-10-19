@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.roypadina.obsidian-vault-git-watcher</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/ObsidianVaultGitWatcher.app/Contents/MacOS/ObsidianVaultGitWatcher</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict><key>PATH</key><string>/opt/homebrew/bin:/usr/bin:/bin</string></dict>
+    <key>RunAtLoad</key><true/>
+    <!-- restart after a crash only: Quit really quits (until the next login) -->
+    <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
+    <!-- the app itself handles the 10-min/daily/wake schedule internally (Timer +
+         NSWorkspace.didWakeNotification) -- this plist only needs to keep it running.
+         No StandardErrorPath: the app opens its own log file (Settings > General > Log). -->
+</dict>
+</plist>
