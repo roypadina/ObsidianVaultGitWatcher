@@ -10,7 +10,8 @@ A small native **macOS** menu bar app that watches your Obsidian vaults (or any 
 repositories) and reminds you to commit and push once you've stopped editing. One app,
 one menu bar icon, any number of vaults, each with its own schedule.
 
-[![macOS](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-000000?logo=apple&logoColor=white)](https://www.apple.com/macos/)
+[![Universal](https://img.shields.io/badge/Apple%20Silicon%20%2B%20Intel-universal-555555?logo=apple&logoColor=white)](#requirements)
 [![Swift](https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white)](https://swift.org)
 [![CI](https://github.com/roypadina/ObsidianVaultGitWatcher/actions/workflows/ci.yml/badge.svg)](https://github.com/roypadina/ObsidianVaultGitWatcher/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/roypadina/ObsidianVaultGitWatcher?logo=github)](https://github.com/roypadina/ObsidianVaultGitWatcher/releases/latest)
@@ -57,19 +58,28 @@ one menu bar icon, any number of vaults, each with its own schedule.
   <img src="docs/screenshots/general.png" alt="Settings, General tab: launch at login, menu bar icon, log file, config export and import, About" width="480">
 </p>
 
-## Install
+<p align="center">
+  <img src="docs/screenshots/menubar-light.png" alt="The menu bar icon in its five states: clean, files uncommitted, error, snoozed and skipped" width="480">
+</p>
 
-> **Requires macOS 14 Sonoma or newer** and `git` (the Xcode command line tools:
-> `xcode-select --install`).
+## Install
 
 ```bash
 brew install --cask roypadina/tap/obsidian-vault-git-watcher
 ```
 
+## Requirements
+
+macOS 14 Sonoma or later · Apple Silicon and Intel (universal binary)
+
+Also needs `git` (the Xcode command line tools: `xcode-select --install`).
+
+### First launch
+
 **Not notarized.** The app is ad-hoc signed (no paid Apple Developer ID), so macOS may block
-the first launch ("Apple could not verify…"). Either right-click it in `/Applications` →
-**Open** (then **Open Anyway** in System Settings → Privacy & Security), or clear quarantine
-once:
+the first launch ("Apple could not verify…"). Open **System Settings → Privacy & Security**,
+scroll down and click **Open Anyway** (right-click → Open no longer works on macOS 15+), or
+clear quarantine once:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/ObsidianVaultGitWatcher.app

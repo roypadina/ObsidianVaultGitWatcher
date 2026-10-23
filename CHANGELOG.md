@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1] - 2026-10-23
+
+### Changed
+- Universal build: now runs on Intel Macs (arm64 + x86_64).
+- README polish: Requirements block, macOS 15+ first-launch steps, menu bar screenshot.
+
 ## [0.2.0] - 2026-10-19
 
 First public release.
