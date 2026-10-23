@@ -63,10 +63,33 @@ enum GitError: Error, CustomStringConvertible {
     var description: String { switch self { case .failed(let m): return m } }
 }
 
+private var foundGit: String?
+
+/// Real git: Homebrew (Apple Silicon, then Intel) before /usr/bin/git. That one is only a shim
+/// until the Xcode command line tools exist (running it would pop the install prompt), so it
+/// counts only if `xcode-select -p` succeeds. Not found: a clear error, never the prompt.
+func gitExecutable() throws -> String {
+    if let foundGit { return foundGit }
+    let fm = FileManager.default
+    var found = ["/opt/homebrew/bin/git", "/usr/local/bin/git"].first { fm.isExecutableFile(atPath: $0) }
+    if found == nil, fm.isExecutableFile(atPath: "/usr/bin/git") {
+        let x = Process()
+        x.executableURL = URL(fileURLWithPath: "/usr/bin/xcode-select")
+        x.arguments = ["-p"]
+        x.standardOutput = FileHandle.nullDevice; x.standardError = FileHandle.nullDevice
+        if (try? x.run()) != nil { x.waitUntilExit(); if x.terminationStatus == 0 { found = "/usr/bin/git" } }
+    }
+    guard let found else {
+        throw GitError.failed("git not found. Install it with Homebrew (brew install git) or the Xcode command line tools (xcode-select --install).")
+    }
+    foundGit = found
+    return found
+}
+
 @discardableResult
 func git(_ v: Vault, _ args: [String], extraEnv: [String: String]? = nil) throws -> String {
     let p = Process()
-    p.executableURL = URL(fileURLWithPath: "/usr/bin/git")
+    p.executableURL = URL(fileURLWithPath: try gitExecutable())
     p.arguments = ["-C", v.path] + args
     if let extraEnv {
         var e = ProcessInfo.processInfo.environment
