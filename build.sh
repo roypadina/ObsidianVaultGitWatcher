@@ -13,7 +13,12 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 # macOS 14 is the oldest the Settings window (SwiftUI) supports; matches Info.plist
-swiftc -O -target "$(uname -m)-apple-macos14" -file-prefix-map "$PWD=." App/*.swift -o "$APP/Contents/MacOS/$APP_NAME"
+# Universal: one swiftc per arch, merged with lipo.
+for ARCH in arm64 x86_64; do
+  swiftc -O -target "$ARCH-apple-macos14" -file-prefix-map "$PWD=." App/*.swift -o "build/$APP_NAME-$ARCH"
+done
+lipo -create "build/$APP_NAME-arm64" "build/$APP_NAME-x86_64" -output "$APP/Contents/MacOS/$APP_NAME"
+rm -f "build/$APP_NAME-arm64" "build/$APP_NAME-x86_64"
 cp Info.plist "$APP/Contents/Info.plist"
 cp Assets/icons/AppIcon.icns Assets/icons/menubar.png Assets/icons/menubar@2x.png "$APP/Contents/Resources/"
 
