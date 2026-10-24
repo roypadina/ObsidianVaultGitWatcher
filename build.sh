@@ -25,7 +25,19 @@ cp Assets/icons/AppIcon.icns Assets/icons/menubar.png Assets/icons/menubar@2x.pn
 if [ "$1" = "dist" ]; then
   strip -S -x "$APP/Contents/MacOS/$APP_NAME"
 fi
-codesign --force --deep -s - "$APP" 2>/dev/null || true
+# Stable identity (when in the keychain) keeps macOS permission grants across updates; ad-hoc otherwise.
+ID="${OBSIDIANVAULTGITWATCHER_SIGN_IDENTITY:-}"
+if [ -z "$ID" ] && security find-identity -v -p codesigning | grep -q "KeyLayoutSwitcher Dev"; then
+  ID="KeyLayoutSwitcher Dev"
+fi
+if [ -n "$ID" ]; then
+  codesign --force --options runtime -s "$ID" "$APP"
+  codesign --verify --deep --strict "$APP"
+  echo "Signed with: $ID"
+else
+  codesign --force --deep -s - "$APP" 2>/dev/null || true
+  echo "Stable signing identity not found: ad-hoc signed"
+fi
 echo "Built $APP"
 
 if [ "$1" = "dist" ]; then
