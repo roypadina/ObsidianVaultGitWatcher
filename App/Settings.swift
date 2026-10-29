@@ -375,6 +375,7 @@ struct VaultsPane: View {
 }
 
 struct VaultRow: View {
+    @Environment(\.backgroundProminence) private var prominence // .increased: the row is selected, on the accent color
     let vault: VaultConfig
     let status: Status?
     @Binding var enabled: Bool
@@ -389,7 +390,7 @@ struct VaultRow: View {
                     .foregroundStyle(enabled ? .primary : .secondary)
                 Text(status.map(statusText) ?? "Checking…")
                     .font(.caption)
-                    .foregroundStyle(status?.state == "error" ? .red : .secondary)
+                    .foregroundStyle(status?.state == "error" && prominence != .increased ? .red : .secondary)
             }
             .lineLimit(1)
             Spacer(minLength: 0)
@@ -400,6 +401,7 @@ struct VaultRow: View {
 }
 
 struct StatusIcon: View {
+    @Environment(\.backgroundProminence) private var prominence
     let state: String?
     var body: some View {
         let color: Color = switch state {
@@ -410,7 +412,7 @@ struct StatusIcon: View {
         default: .secondary
         }
         Image(systemName: symbolName(for: state ?? "clean"))
-            .foregroundStyle(color)
+            .foregroundStyle(prominence == .increased ? .primary : color)
             .opacity(state == nil ? 0 : 1)
             .accessibilityHidden(true) // the status text next to it says the same
     }
