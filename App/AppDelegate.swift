@@ -57,7 +57,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if store.isFirstRun, Bundle.main.bundlePath.hasPrefix("/Applications/"), !LaunchAgent.isInstalled {
             LaunchAgent.setEnabled(true)
         }
-        if store.config.vaults.isEmpty { openSettings() } // first run (or unreadable config): nothing to watch yet
+        if !UserDefaults.standard.bool(forKey: "didShowWelcome") {
+            UserDefaults.standard.set(true, forKey: "didShowWelcome")
+            WelcomeWindow.show() // its Open Settings button leads to the Vaults pane
+        } else if store.config.vaults.isEmpty { openSettings() } // unreadable config, or every vault removed: nothing to watch yet
     }
 
     /// Opening the app again (Finder, Spotlight) while it runs shows Settings: the way
@@ -191,8 +194,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "About \(appName)", action: #selector(about), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Support on Ko-fi ☕", action: #selector(koFi), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Quit \(appName)", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
 
@@ -205,24 +207,51 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    /// An accessory app shows no menu bar, but key equivalents still go through the main
-    /// menu: this gives the Settings window ⌘, ⌘W and the standard text-editing keys.
+    /// The menu bar while a window is open and AccessoryWindows has made us a regular app (MBX-15);
+    /// its key equivalents also work while the app is an accessory: ⌘, ⌘W ⌘Q and the text-editing keys.
     func mainMenu() -> NSMenu {
-        let main = NSMenu()
-        for (title, items) in [
-            ("App", [("Settings…", #selector(openSettings), ","), ("Close Window", #selector(NSWindow.performClose(_:)), "w")]),
-            ("Edit", [("Undo", Selector(("undo:")), "z"), ("Redo", Selector(("redo:")), "Z"),
-                      ("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
-                      ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")]),
-        ] {
-            let sub = NSMenu(title: title)
-            for (t, action, key) in items { sub.addItem(withTitle: t, action: action, keyEquivalent: key) }
+        let main = NSMenu(), app = NSMenu(), services = NSMenu(title: "Services")
+        let window = NSMenu(title: "Window"), help = NSMenu(title: "Help")
+        func add(_ m: NSMenu, _ title: String, _ action: Selector, _ key: String = "",
+                 _ mask: NSEvent.ModifierFlags = .command, target: AnyObject? = nil) {
+            let item = m.addItem(withTitle: title, action: action, keyEquivalent: key)
+            item.keyEquivalentModifierMask = mask
+            item.target = target
+        }
+        add(app, "About \(appName)", #selector(about), target: self)
+        app.addItem(.separator())
+        add(app, "Settings…", #selector(openSettings), ",", target: self)
+        app.addItem(.separator())
+        app.addItem(withTitle: "Services", action: nil, keyEquivalent: "").submenu = services
+        app.addItem(.separator())
+        add(app, "Hide \(appName)", #selector(NSApplication.hide(_:)), "h")
+        add(app, "Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option])
+        add(app, "Show All", #selector(NSApplication.unhideAllApplications(_:)))
+        app.addItem(.separator())
+        add(app, "Quit \(appName)", #selector(NSApplication.terminate(_:)), "q")
+        add(window, "Close", #selector(NSWindow.performClose(_:)), "w")
+        add(window, "Minimize", #selector(NSWindow.performMiniaturize(_:)), "m")
+        add(window, "Zoom", #selector(NSWindow.performZoom(_:)))
+        window.addItem(.separator())
+        add(window, "Bring All to Front", #selector(NSApplication.arrangeInFront(_:)))
+        add(help, "\(appName) Help", #selector(openHelp), "?", target: self)
+
+        let edit = NSMenu(title: "Edit")
+        for (t, action, key) in [("Undo", Selector(("undo:")), "z"), ("Redo", Selector(("redo:")), "Z"),
+                                 ("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
+                                 ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")] {
+            edit.addItem(withTitle: t, action: action, keyEquivalent: key)
+        }
+        for (title, sub) in [(appName, app), ("Edit", edit), ("Window", window), ("Help", help)] {
             main.addItem(withTitle: title, action: nil, keyEquivalent: "").submenu = sub
         }
+        NSApp.servicesMenu = services
+        NSApp.windowsMenu = window
+        NSApp.helpMenu = help
         return main
     }
 
-    @objc func openSettings(_ sender: Any? = nil) {
+    @MainActor @objc func openSettings(_ sender: Any? = nil) {
         let v = (sender as? NSMenuItem)?.representedObject as? Vault
         if let v { store.selection = v.cfg.id }
         SettingsWindow.show(vaultsTab: v != nil)
@@ -272,7 +301,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         try? p.run()
     }
 
-    @objc func about() { AboutWindow.show() }
+    @MainActor @objc func about() { AboutWindow.show() }
+
+    @objc func openHelp() { NSWorkspace.shared.open(repoURL.appendingPathComponent("wiki")) }
 
     @objc func koFi() { NSWorkspace.shared.open(koFiURL) }
 

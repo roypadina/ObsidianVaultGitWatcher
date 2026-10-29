@@ -78,7 +78,7 @@ func askMain(_ v: Vault, _ changes: String) -> (button: String, message: String,
     // abortModal() is the documented way to end runModal() from a timer -> returns .abort
     let timeout = Timer(timeInterval: 3600, repeats: false) { _ in NSApplication.shared.abortModal() }
     RunLoop.main.add(timeout, forMode: .modalPanel)
-    NSApplication.shared.activate(ignoringOtherApps: true)
+    NSApplication.shared.activate()
     let response = alert.runModal()
     timeout.invalidate()
 
