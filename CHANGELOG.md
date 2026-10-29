@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-30
+
 ### Added
 - Welcome window on first launch (and after this update): what the app does, where its icon is, and the launch-at-login switch. Open it again from Settings > General > Welcome Guide….
 - App menu with About, Settings…, Hide, Quit, Window and Help (online help opens the wiki) while a window is open.
