@@ -77,10 +77,11 @@ Also needs `git` (the Xcode command line tools: `xcode-select --install`).
 
 ### First launch
 
-**Not notarized.** The app is ad-hoc signed (no paid Apple Developer ID), so macOS may block
-the first launch ("Apple could not verify…"). Open **System Settings → Privacy & Security**,
-scroll down and click **Open Anyway** (right-click → Open no longer works on macOS 15+), or
-clear quarantine once:
+**Not notarized.** The app is self-signed with a stable identity, so permissions survive
+updates, but it has no paid Apple Developer ID, so macOS may block the first launch
+("Apple could not verify…"). Open **System Settings → Privacy & Security**, scroll down and
+click **Open Anyway** (right-click → Open no longer works on macOS 15+), or clear quarantine
+once:
 
 ```bash
 xattr -dr com.apple.quarantine /Applications/ObsidianVaultGitWatcher.app
@@ -96,7 +97,9 @@ and open it again (the running copy keeps the old version until it restarts).
 
 ## Usage
 
-1. Open the app. The first time, Settings opens on the **Vaults** tab.
+1. Open the app. The first time, a **Welcome** window explains what it does and where the
+   icon is, and has the launch-at-login switch. Click **Open Settings** to go to the
+   **Vaults** tab. (Open it again any time from Settings → General → **Welcome Guide…**.)
 2. Click **+** and choose your vault folder. It must be the top folder of a git repository
    with a remote (`git init` and `git remote add origin <url>` first if it isn't).
 3. That's it. The menu bar icon shows the most urgent state across your vaults:
@@ -109,7 +112,12 @@ Left to right: clean, changes waiting for a reminder, error (missing folder, not
 commits not pushed), snoozed, skipped. The menu has one submenu per vault ("Notes — 3 files
 uncommitted") with **Commit & push…**, **Snooze**, **Skip these changes**, **Push**, **Open
 vault folder**, **Open in Obsidian** and **Vault Settings…**, then **Settings…** (⌘,),
-**About**, **Support on Ko-fi ☕** and **Quit**.
+**About**, **Support on Ko-fi ☕** and **Quit Obsidian Vault Git Watcher**.
+
+While Settings, About or Welcome is open, the app also shows in the Dock and gets a normal
+menu bar (About, Settings…, Hide, Quit, Window, and Help, which opens the
+[wiki](https://github.com/roypadina/ObsidianVaultGitWatcher/wiki)), so the window can't get
+lost behind other apps. It goes back to menu bar only when you close it.
 
 ### Settings
 
@@ -137,7 +145,7 @@ A field that doesn't validate shows the problem under it and isn't saved until f
 
 **General** tab: launch at login, the menu bar icon (always, or only when a vault needs
 attention; optional count of uncommitted files), the log file, the config file with
-**Export…** / **Import…**, and About.
+**Export…** / **Import…**, and About, where **Welcome Guide…** reopens the welcome window.
 
 More in the [wiki](https://github.com/roypadina/ObsidianVaultGitWatcher/wiki): every setting,
 the config file format, troubleshooting and the FAQ.

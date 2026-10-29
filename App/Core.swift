@@ -139,7 +139,8 @@ func fingerprint(_ v: Vault) -> String? {
 
 func statusLines(_ v: Vault) -> [String] {
     // --no-optional-locks: never hold index.lock against a commit running on another queue
-    let args = ["--no-optional-locks", "status", "--short"] + (v.cfg.stage == .tracked ? ["-uno"] : []) + pathspec(v)
+    // quotePath=false: non-ASCII names (Hebrew) display as they are, not as octal escapes
+    let args = ["-c", "core.quotePath=false", "--no-optional-locks", "status", "--short"] + (v.cfg.stage == .tracked ? ["-uno"] : []) + pathspec(v)
     return (try? git(v, args))?.split(separator: "\n").map(String.init) ?? []
 }
 

@@ -7,6 +7,7 @@ let appName = "Obsidian Vault Git Watcher"
 let repoURL = URL(string: "https://github.com/roypadina/ObsidianVaultGitWatcher")!
 let koFiURL = URL(string: "https://ko-fi.com/roypadina")!
 
+@MainActor
 enum AboutWindow {
     private static var window: NSWindow?
 
@@ -19,8 +20,7 @@ enum AboutWindow {
             w.center()
             window = w
         }
-        NSApp.activate(ignoringOtherApps: true)
-        window?.makeKeyAndOrderFront(nil)
+        if let window { AccessoryWindows.shared.show(window) }
     }
 }
 

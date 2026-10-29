@@ -6,8 +6,31 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-private let paneSize = CGSize(width: 800, height: 600)
+// One size per pane (SET-8): General is a form, Vaults needs the width for its split view.
+private let generalSize = CGSize(width: 800, height: 780)
+private let vaultsSize = CGSize(width: 800, height: 600)
 
+/// Real windows from a menu-bar-only app (MBX-15): Dock icon and menu bar while one is open, back to
+/// `.accessory` when the last one closes. The reminder's NSAlert can't become main, so it doesn't count.
+@MainActor
+final class AccessoryWindows: NSObject, NSWindowDelegate {
+    static let shared = AccessoryWindows()
+
+    func show(_ window: NSWindow) {
+        window.delegate = self
+        NSApp.setActivationPolicy(.regular)
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        let closing = notification.object as? NSWindow
+        let others = NSApp.windows.contains { $0 !== closing && $0.isVisible && $0.canBecomeMain }
+        if !others { NSApp.setActivationPolicy(.accessory) }
+    }
+}
+
+@MainActor
 enum SettingsWindow {
     private static var window: NSWindow?
 
@@ -15,17 +38,17 @@ enum SettingsWindow {
         let w = window ?? make()
         window = w
         if vaultsTab { (w.contentViewController as? NSTabViewController)?.selectedTabViewItemIndex = 1 }
-        NSApp.activate(ignoringOtherApps: true)
-        w.makeKeyAndOrderFront(nil)
+        AccessoryWindows.shared.show(w)
     }
 
     private static func make() -> NSWindow {
         let tabs = NSTabViewController()
         tabs.tabStyle = .toolbar
-        for (label, symbol, view) in [("General", "gearshape", AnyView(GeneralPane())), ("Vaults", "folder", AnyView(VaultsPane()))] {
+        for (label, symbol, view, size) in [("General", "gearshape", AnyView(GeneralPane()), generalSize),
+                                            ("Vaults", "folder", AnyView(VaultsPane()), vaultsSize)] {
             let host = NSHostingController(rootView: view.environmentObject(store))
             host.sizingOptions = [] // fixed pane size; the tab view controller sizes the window from it
-            host.preferredContentSize = paneSize
+            host.preferredContentSize = size
             host.title = label // becomes the window title
             let item = NSTabViewItem(viewController: host)
             item.label = label
@@ -37,6 +60,8 @@ enum SettingsWindow {
         w.styleMask = [.titled, .closable, .miniaturizable]
         w.toolbarStyle = .preference
         w.isReleasedWhenClosed = false
+        w.standardWindowButton(.miniaturizeButton)?.isEnabled = false // the window can't resize: dim, don't hide
+        w.standardWindowButton(.zoomButton)?.isEnabled = false
         w.center()
         return w
     }
@@ -46,7 +71,6 @@ enum SettingsWindow {
 
 struct GeneralPane: View {
     @EnvironmentObject var store: ConfigStore
-    @SwiftUI.State private var launchAtLogin = false
     @SwiftUI.State private var note: (text: String, isError: Bool)?
 
     var body: some View {
@@ -54,13 +78,7 @@ struct GeneralPane: View {
             if let error = store.loadError {
                 Section { Label(error, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red) }
             }
-            Section("Startup") {
-                Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: {
-                    LaunchAgent.setEnabled($0)
-                    launchAtLogin = LaunchAgent.isEnabled
-                }))
-                Caption("Starts the app at login through a LaunchAgent (\(LaunchAgent.label)), which also restarts it if it crashes. Quit stops it until the next login.")
-            }
+            Section("Startup") { LaunchAtLoginToggle() }
             Section("Menu bar") {
                 Picker("Show the icon", selection: $store.config.menuBarIcon) {
                     Text("Always").tag(IconMode.always)
@@ -104,15 +122,14 @@ struct GeneralPane: View {
                 }
                 HStack {
                     Button("About \(appName)…") { AboutWindow.show() }
+                    Button("Welcome Guide…") { WelcomeWindow.show() }
                     Button("Support on Ko-fi ☕") { NSWorkspace.shared.open(koFiURL) }
                         .buttonStyle(.borderedProminent)
                 }
             }
         }
         .formStyle(.grouped)
-        .frame(width: paneSize.width, height: paneSize.height)
-        // Process.waitUntilExit spins the run loop: never call it while SwiftUI is updating
-        .task { launchAtLogin = await Task.detached { LaunchAgent.isEnabled }.value }
+        .frame(width: generalSize.width, height: generalSize.height)
     }
 
     func chooseLog() {
@@ -156,6 +173,24 @@ struct GeneralPane: View {
             note = ("Imported \(c.vaults.count) vault(s) from \(url.lastPathComponent).", false)
         } catch {
             note = ("Can't import \(url.lastPathComponent): \(error)", true)
+        }
+    }
+}
+
+/// Settings > General and the welcome window: the LaunchAgent switch (not SMAppService: KeepAlive restarts after a crash).
+/// A Group, so each caller lays the toggle and its help out in its own container.
+struct LaunchAtLoginToggle: View {
+    @SwiftUI.State private var launchAtLogin = false
+
+    var body: some View {
+        Group {
+            Toggle("Launch at login", isOn: Binding(get: { launchAtLogin }, set: {
+                LaunchAgent.setEnabled($0)
+                launchAtLogin = LaunchAgent.isEnabled
+            }))
+            // Process.waitUntilExit spins the run loop: never call it while SwiftUI is updating
+            .task { launchAtLogin = await Task.detached { LaunchAgent.isEnabled }.value }
+            Caption("Starts the app when you log in and restarts it if it crashes. Quit stops it until the next login.")
         }
     }
 }
@@ -229,7 +264,7 @@ struct VaultsPane: View {
             }
             panes
         }
-        .frame(width: paneSize.width, height: paneSize.height)
+        .frame(width: vaultsSize.width, height: vaultsSize.height)
         .onAppear { if selected == nil { store.selection = store.config.vaults.first?.id } }
         .alert("Remove “\(removing?.displayName ?? "")”?",
                isPresented: Binding(get: { removing != nil }, set: { if !$0 { removing = nil } }),
@@ -340,6 +375,7 @@ struct VaultsPane: View {
 }
 
 struct VaultRow: View {
+    @Environment(\.backgroundProminence) private var prominence // .increased: the row is selected, on the accent color
     let vault: VaultConfig
     let status: Status?
     @Binding var enabled: Bool
@@ -354,7 +390,7 @@ struct VaultRow: View {
                     .foregroundStyle(enabled ? .primary : .secondary)
                 Text(status.map(statusText) ?? "Checking…")
                     .font(.caption)
-                    .foregroundStyle(status?.state == "error" ? .red : .secondary)
+                    .foregroundStyle(status?.state == "error" && prominence != .increased ? .red : .secondary)
             }
             .lineLimit(1)
             Spacer(minLength: 0)
@@ -365,6 +401,7 @@ struct VaultRow: View {
 }
 
 struct StatusIcon: View {
+    @Environment(\.backgroundProminence) private var prominence
     let state: String?
     var body: some View {
         let color: Color = switch state {
@@ -375,7 +412,7 @@ struct StatusIcon: View {
         default: .secondary
         }
         Image(systemName: symbolName(for: state ?? "clean"))
-            .foregroundStyle(color)
+            .foregroundStyle(prominence == .increased ? .primary : color)
             .opacity(state == nil ? 0 : 1)
             .accessibilityHidden(true) // the status text next to it says the same
     }
@@ -630,7 +667,8 @@ func snapshotSettings(to dir: String) {
     store.statuses = Dictionary(store.vaults.map { ($0.cfg.id, currentStatus($0)) }, uniquingKeysWith: { a, _ in a })
     store.selection = store.config.vaults.first?.id
     var shots: [(name: String, view: AnyView, size: CGSize?)] = [
-        ("general", AnyView(GeneralPane()), paneSize), ("vaults", AnyView(VaultsPane()), paneSize), ("about", AnyView(AboutView()), nil),
+        ("general", AnyView(GeneralPane()), generalSize), ("vaults", AnyView(VaultsPane()), vaultsSize),
+        ("about", AnyView(AboutView()), nil), ("welcome", AnyView(WelcomeView(onOpenSettings: {}, onDone: {})), nil),
     ]
     var jobs: [(String, AnyView, CGSize?, NSAppearance.Name)] = []
     for shot in shots { jobs += [("\(shot.name)-light", shot.view, shot.size, .aqua), ("\(shot.name)-dark", shot.view, shot.size, .darkAqua)] }
@@ -657,7 +695,7 @@ func snapshotSettings(to dir: String) {
         for (mode, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
             NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
                 if mode == "light", let v = store.active.first { // its vibrant background renders white off screen: light only
-                    let lines = statusLines(v)
+                    let lines = statusLines(v).map(changeLine)
                     let (alert, _, _, _) = reminderAlert(v, lines.prefix(15).joined(separator: "\n"))
                     alert.window.appearance = NSAppearance(named: appearance)
                     alert.layout()

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-30
+
+### Added
+- Welcome window on first launch (and after this update): what the app does, where its icon is, and the launch-at-login switch. Open it again from Settings > General > Welcome Guide….
+- App menu with About, Settings…, Hide, Quit, Window and Help (online help opens the wiki) while a window is open.
+- The status icon's VoiceOver label and tooltip name the vault that needs attention.
+
+### Changed
+- Settings, About and Welcome now show a Dock icon and the menu bar while open, so they can't get lost behind other apps.
+- The reminder is titled "<vault> has uncommitted changes" and lists changes as "Modified: …", "New: …", "Deleted: …"; Hebrew and other non-ASCII file names show as written.
+- Failure alerts say what failed ("Couldn't commit …", "Couldn't push …") and what to do next.
+- The commit and snooze prompts have Commit and Snooze buttons and labeled fields.
+- The status menu ends with "Quit Obsidian Vault Git Watcher".
+- Settings > General is tall enough to show the About section without scrolling; minimize and zoom are dimmed.
+- Uses the current macOS window-activation call, so the reminder no longer forces its way past the window you are typing in.
+
+### Fixed
+- Custom snooze rejects text, zero and negative hours instead of silently snoozing for 1 hour or firing at once.
+- Status text and icon in the selected vault row stay readable on the selection color.
+
 ## [0.2.4] - 2026-10-25
 
 ### Changed

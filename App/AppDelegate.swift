@@ -5,17 +5,18 @@
 // applyConfig(), which re-applies everything live.
 import Cocoa
 
-func promptText(title: String, message: String, defaultValue: String) -> String? {
+func promptText(title: String, message: String, defaultValue: String, confirm: String, fieldLabel: String) -> String? {
     let alert = NSAlert()
     alert.messageText = title
     alert.informativeText = message
-    alert.addButton(withTitle: "OK")
+    alert.addButton(withTitle: confirm)
     alert.addButton(withTitle: "Cancel")
     let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
     field.stringValue = defaultValue
+    field.setAccessibilityLabel(fieldLabel)
     alert.accessoryView = field
     alert.window.initialFirstResponder = field
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
     return alert.runModal() == .alertFirstButtonReturn ? field.stringValue : nil
 }
 
@@ -57,7 +58,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if store.isFirstRun, Bundle.main.bundlePath.hasPrefix("/Applications/"), !LaunchAgent.isInstalled {
             LaunchAgent.setEnabled(true)
         }
-        if store.config.vaults.isEmpty { openSettings() } // first run (or unreadable config): nothing to watch yet
+        if !UserDefaults.standard.bool(forKey: "didShowWelcome") {
+            UserDefaults.standard.set(true, forKey: "didShowWelcome")
+            WelcomeWindow.show() // its Open Settings button leads to the Vaults pane
+        } else if store.config.vaults.isEmpty { openSettings() } // unreadable config, or every vault removed: nothing to watch yet
     }
 
     /// Opening the app again (Finder, Spotlight) while it runs shows Settings: the way
@@ -124,7 +128,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let files = active.filter { ["pending", "snoozed"].contains($0.1.state) }.reduce(0) { $0 + $1.1.files }
         if let button = statusItem.button {
             button.image = menuBarImage(for: state)
-            button.setAccessibilityLabel("\(appName): \(state)")
+            let urgent = active.first { $0.1.state == state && state != "clean" }
+            let label = urgent.map { "\(appName): \($0.0.name), \(statusText($0.1))" } ?? "\(appName): all vaults clean"
+            button.setAccessibilityLabel(label)
+            button.toolTip = label
             button.title = store.config.showFileCount && files > 0 ? "\(files)" : ""
         }
         statusItem.isVisible = store.config.menuBarIcon == .always || ["pending", "error"].contains(state)
@@ -191,8 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "About \(appName)", action: #selector(about), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Support on Ko-fi ☕", action: #selector(koFi), keyEquivalent: "").target = self
-        menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Quit \(appName)", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
 
@@ -205,24 +211,51 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return item
     }
 
-    /// An accessory app shows no menu bar, but key equivalents still go through the main
-    /// menu: this gives the Settings window ⌘, ⌘W and the standard text-editing keys.
+    /// The menu bar while a window is open and AccessoryWindows has made us a regular app (MBX-15);
+    /// its key equivalents also work while the app is an accessory: ⌘, ⌘W ⌘Q and the text-editing keys.
     func mainMenu() -> NSMenu {
-        let main = NSMenu()
-        for (title, items) in [
-            ("App", [("Settings…", #selector(openSettings), ","), ("Close Window", #selector(NSWindow.performClose(_:)), "w")]),
-            ("Edit", [("Undo", Selector(("undo:")), "z"), ("Redo", Selector(("redo:")), "Z"),
-                      ("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
-                      ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")]),
-        ] {
-            let sub = NSMenu(title: title)
-            for (t, action, key) in items { sub.addItem(withTitle: t, action: action, keyEquivalent: key) }
+        let main = NSMenu(), app = NSMenu(), services = NSMenu(title: "Services")
+        let window = NSMenu(title: "Window"), help = NSMenu(title: "Help")
+        func add(_ m: NSMenu, _ title: String, _ action: Selector, _ key: String = "",
+                 _ mask: NSEvent.ModifierFlags = .command, target: AnyObject? = nil) {
+            let item = m.addItem(withTitle: title, action: action, keyEquivalent: key)
+            item.keyEquivalentModifierMask = mask
+            item.target = target
+        }
+        add(app, "About \(appName)", #selector(about), target: self)
+        app.addItem(.separator())
+        add(app, "Settings…", #selector(openSettings), ",", target: self)
+        app.addItem(.separator())
+        app.addItem(withTitle: "Services", action: nil, keyEquivalent: "").submenu = services
+        app.addItem(.separator())
+        add(app, "Hide \(appName)", #selector(NSApplication.hide(_:)), "h")
+        add(app, "Hide Others", #selector(NSApplication.hideOtherApplications(_:)), "h", [.command, .option])
+        add(app, "Show All", #selector(NSApplication.unhideAllApplications(_:)))
+        app.addItem(.separator())
+        add(app, "Quit \(appName)", #selector(NSApplication.terminate(_:)), "q")
+        add(window, "Close", #selector(NSWindow.performClose(_:)), "w")
+        add(window, "Minimize", #selector(NSWindow.performMiniaturize(_:)), "m")
+        add(window, "Zoom", #selector(NSWindow.performZoom(_:)))
+        window.addItem(.separator())
+        add(window, "Bring All to Front", #selector(NSApplication.arrangeInFront(_:)))
+        add(help, "\(appName) Help", #selector(openHelp), "?", target: self)
+
+        let edit = NSMenu(title: "Edit")
+        for (t, action, key) in [("Undo", Selector(("undo:")), "z"), ("Redo", Selector(("redo:")), "Z"),
+                                 ("Cut", #selector(NSText.cut(_:)), "x"), ("Copy", #selector(NSText.copy(_:)), "c"),
+                                 ("Paste", #selector(NSText.paste(_:)), "v"), ("Select All", #selector(NSText.selectAll(_:)), "a")] {
+            edit.addItem(withTitle: t, action: action, keyEquivalent: key)
+        }
+        for (title, sub) in [(appName, app), ("Edit", edit), ("Window", window), ("Help", help)] {
             main.addItem(withTitle: title, action: nil, keyEquivalent: "").submenu = sub
         }
+        NSApp.servicesMenu = services
+        NSApp.windowsMenu = window
+        NSApp.helpMenu = help
         return main
     }
 
-    @objc func openSettings(_ sender: Any? = nil) {
+    @MainActor @objc func openSettings(_ sender: Any? = nil) {
         let v = (sender as? NSMenuItem)?.representedObject as? Vault
         if let v { store.selection = v.cfg.id }
         SettingsWindow.show(vaultsTab: v != nil)
@@ -231,7 +264,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func commitAction(_ sender: NSMenuItem) {
         let v = sender.representedObject as! Vault
-        guard let msg = promptText(title: "Commit \(v.name) changes", message: "Commit message (empty: \"\(v.cfg.commitMessage)\"):", defaultValue: "") else { return }
+        guard let msg = promptText(title: "Commit \(v.name) changes", message: "Commit message (empty: \"\(v.cfg.commitMessage)\"):", defaultValue: "", confirm: "Commit", fieldLabel: "Commit message") else { return }
         cliCommit(v, msg)
         refreshDisplay()
     }
@@ -243,9 +276,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func snoozeCustom(_ sender: NSMenuItem) {
         let v = sender.representedObject as! Vault
-        guard let hours = promptText(title: "Snooze \(v.name)", message: "Snooze for how many hours?", defaultValue: "3") else { return }
-        cliSnoozeHours(v, hours)
-        refreshDisplay()
+        var message = "Snooze for how many hours?"
+        var input = "3"
+        // ask again until it is one positive number: cliSnoozeHours would turn "abc" into 1 hour and "0" into now
+        while let text = promptText(title: "Snooze \(v.name)", message: message, defaultValue: input, confirm: "Snooze", fieldLabel: "Hours") {
+            if let hours = parseHours(text), hours.count == 1 {
+                cliSnoozeHours(v, String(hours[0]))
+                refreshDisplay()
+                return
+            }
+            input = text
+            message = "Enter hours, for example 0.5 or 3."
+        }
     }
 
     @objc func snoozeTomorrow(_ sender: NSMenuItem) { cliSnoozeTomorrow(sender.representedObject as! Vault); refreshDisplay() }
@@ -272,7 +314,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         try? p.run()
     }
 
-    @objc func about() { AboutWindow.show() }
+    @MainActor @objc func about() { AboutWindow.show() }
+
+    @objc func openHelp() { NSWorkspace.shared.open(repoURL.appendingPathComponent("wiki")) }
 
     @objc func koFi() { NSWorkspace.shared.open(koFiURL) }
 
