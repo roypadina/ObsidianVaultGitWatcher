@@ -5,17 +5,18 @@
 // applyConfig(), which re-applies everything live.
 import Cocoa
 
-func promptText(title: String, message: String, defaultValue: String) -> String? {
+func promptText(title: String, message: String, defaultValue: String, confirm: String, fieldLabel: String) -> String? {
     let alert = NSAlert()
     alert.messageText = title
     alert.informativeText = message
-    alert.addButton(withTitle: "OK")
+    alert.addButton(withTitle: confirm)
     alert.addButton(withTitle: "Cancel")
     let field = NSTextField(frame: NSRect(x: 0, y: 0, width: 280, height: 24))
     field.stringValue = defaultValue
+    field.setAccessibilityLabel(fieldLabel)
     alert.accessoryView = field
     alert.window.initialFirstResponder = field
-    NSApp.activate(ignoringOtherApps: true)
+    NSApp.activate()
     return alert.runModal() == .alertFirstButtonReturn ? field.stringValue : nil
 }
 
@@ -127,7 +128,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let files = active.filter { ["pending", "snoozed"].contains($0.1.state) }.reduce(0) { $0 + $1.1.files }
         if let button = statusItem.button {
             button.image = menuBarImage(for: state)
-            button.setAccessibilityLabel("\(appName): \(state)")
+            let urgent = active.first { $0.1.state == state && state != "clean" }
+            let label = urgent.map { "\(appName): \($0.0.name), \(statusText($0.1))" } ?? "\(appName): all vaults clean"
+            button.setAccessibilityLabel(label)
+            button.toolTip = label
             button.title = store.config.showFileCount && files > 0 ? "\(files)" : ""
         }
         statusItem.isVisible = store.config.menuBarIcon == .always || ["pending", "error"].contains(state)
@@ -260,7 +264,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func commitAction(_ sender: NSMenuItem) {
         let v = sender.representedObject as! Vault
-        guard let msg = promptText(title: "Commit \(v.name) changes", message: "Commit message (empty: \"\(v.cfg.commitMessage)\"):", defaultValue: "") else { return }
+        guard let msg = promptText(title: "Commit \(v.name) changes", message: "Commit message (empty: \"\(v.cfg.commitMessage)\"):", defaultValue: "", confirm: "Commit", fieldLabel: "Commit message") else { return }
         cliCommit(v, msg)
         refreshDisplay()
     }
@@ -272,9 +276,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc func snoozeCustom(_ sender: NSMenuItem) {
         let v = sender.representedObject as! Vault
-        guard let hours = promptText(title: "Snooze \(v.name)", message: "Snooze for how many hours?", defaultValue: "3") else { return }
-        cliSnoozeHours(v, hours)
-        refreshDisplay()
+        var message = "Snooze for how many hours?"
+        var input = "3"
+        // ask again until it is one positive number: cliSnoozeHours would turn "abc" into 1 hour and "0" into now
+        while let text = promptText(title: "Snooze \(v.name)", message: message, defaultValue: input, confirm: "Snooze", fieldLabel: "Hours") {
+            if let hours = parseHours(text), hours.count == 1 {
+                cliSnoozeHours(v, String(hours[0]))
+                refreshDisplay()
+                return
+            }
+            input = text
+            message = "Enter hours, for example 0.5 or 3."
+        }
     }
 
     @objc func snoozeTomorrow(_ sender: NSMenuItem) { cliSnoozeTomorrow(sender.representedObject as! Vault); refreshDisplay() }

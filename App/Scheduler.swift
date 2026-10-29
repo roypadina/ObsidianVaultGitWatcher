@@ -2,6 +2,23 @@
 // queue (see AppDelegate.scheduleCheck) since askMain() can block for up to an hour.
 import Foundation
 
+/// "?? Daily/" -> "New: Daily/": the reminder shows words, not git's two-letter codes. An unknown code keeps the raw line.
+/// Not by column: git() trims the output, so the first line may have lost its leading space.
+func changeLine(_ line: String) -> String {
+    let t = line.drop { $0 == " " }
+    guard let sp = t.firstIndex(of: " ") else { return line }
+    let code = t[..<sp], path = t[sp...].drop { $0 == " " }
+    let word: String
+    if code == "??" { word = "New" }
+    else if code.contains("U") || code == "AA" || code == "DD" { word = "Conflict" }
+    else if code.contains("R") { word = "Renamed" }
+    else if code.contains("D") { word = "Deleted" }
+    else if code.contains("A") || code.contains("C") { word = "New" }
+    else if code.contains("M") || code.contains("T") { word = "Modified" }
+    else { return line }
+    return "\(word): \(path)"
+}
+
 func runScheduledCheck(_ v: Vault) {
     var s = loadState(v)
     let fp = fingerprint(v)
@@ -16,7 +33,7 @@ func runScheduledCheck(_ v: Vault) {
         return
     }
     logLine("\(v.name): reminder dialog, \(lines.count) files")
-    let shown = lines.prefix(15).joined(separator: "\n")
+    let shown = lines.prefix(15).map(changeLine).joined(separator: "\n")
     let changes = shown + (lines.count > 15 ? "\n… and \(lines.count - 15) more" : "")
     let (button, msg, snoozeUntil) = askMain(v, changes)
     let now = Date()
@@ -43,6 +60,8 @@ func selftest() {
     let hour: TimeInterval = 3600
     var s: State = [:]
 
+    precondition(["M Welcome.md", " M Welcome.md", "?? Daily/", "A  a.md", " D b.md", "R  c.md -> d.md", "UU e.md", "!! f"].map(changeLine)
+        == ["Modified: Welcome.md", "Modified: Welcome.md", "New: Daily/", "New: a.md", "Deleted: b.md", "Renamed: c.md -> d.md", "Conflict: e.md", "!! f"], "reminder wording")
     precondition(!step(&s, nil, t0) && s.isEmpty)
     precondition(!step(&s, "A", t0), "no reminder right away")
     precondition(!step(&s, "A", t0.addingTimeInterval(0.9 * hour)))

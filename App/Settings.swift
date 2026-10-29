@@ -695,7 +695,7 @@ func snapshotSettings(to dir: String) {
         for (mode, appearance) in [("light", NSAppearance.Name.aqua), ("dark", .darkAqua)] {
             NSAppearance(named: appearance)!.performAsCurrentDrawingAppearance {
                 if mode == "light", let v = store.active.first { // its vibrant background renders white off screen: light only
-                    let lines = statusLines(v)
+                    let lines = statusLines(v).map(changeLine)
                     let (alert, _, _, _) = reminderAlert(v, lines.prefix(15).joined(separator: "\n"))
                     alert.window.appearance = NSAppearance(named: appearance)
                     alert.layout()

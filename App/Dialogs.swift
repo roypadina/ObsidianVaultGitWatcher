@@ -52,16 +52,18 @@ func reminderAlert(_ v: Vault, _ changes: String) -> (NSAlert, NSTextField, NSPo
     } + [(untilLabel(v.cfg), { nextDaily($0, v.cfg) })]
 
     let alert = NSAlert()
-    alert.messageText = v.title
-    alert.informativeText = "Uncommitted changes in \(v.name):\n\n\(changes)"
+    alert.messageText = "\(v.name) has uncommitted changes"
+    alert.informativeText = changes
     for title in ["Commit", "Snooze", "Skip these changes"] { alert.addButton(withTitle: title) }
 
     let field = NSTextField(frame: NSRect(x: 0, y: 32, width: 300, height: 24))
     field.placeholderString = "Commit message (optional)"
+    field.setAccessibilityLabel("Commit message")
     let label = NSTextField(labelWithString: "Snooze for:")
     label.frame = NSRect(x: 0, y: 4, width: 80, height: 18)
     let picker = NSPopUpButton(frame: NSRect(x: 80, y: 0, width: 220, height: 26), pullsDown: false)
     picker.addItems(withTitles: snoozeChoices.map(\.title))
+    picker.setAccessibilityLabel("Snooze for")
     let box = NSView(frame: NSRect(x: 0, y: 0, width: 300, height: 56))
     [field, label, picker].forEach(box.addSubview)
     alert.accessoryView = box
@@ -143,7 +145,8 @@ func pushNow(_ v: Vault) {
         notify("Pushed", title: v.title)
     } catch {
         logLine("\(v.name): push failed: \(error)")
-        osa(["display alert (item 1 of argv) message (item 2 of argv) as warning"], ["Push failed - \(v.name)", "\(error)"])
+        osa(["display alert (item 1 of argv) message (item 2 of argv) as warning"],
+            ["Couldn't push \(v.name)", "\(error)\n\nCheck the network and the remote, then choose Push again in the menu bar."])
     }
 }
 
@@ -156,12 +159,12 @@ func commitAndPush(_ v: Vault, _ msg: String) -> Bool {
     } catch CommitError.push(let error) {
         logLine("\(v.name): push failed: \(error)")
         osa(["display alert (item 1 of argv) message (item 2 of argv) as warning"],
-            ["Committed, but push failed - \(v.name)", "\(error)\n\nRun `git push` in \(v.path)."])
+            ["\(v.name) is committed, but the push failed", "\(error)\n\nRun `git push` in \(v.path)."])
         return true
     } catch {
         logLine("\(v.name): commit failed: \(error)")
         osa(["display alert (item 1 of argv) message (item 2 of argv) as critical"],
-            ["Commit failed - \(v.name)", "\(error)"])
+            ["Couldn't commit \(v.name)", "\(error)"])
         return false
     }
 }
