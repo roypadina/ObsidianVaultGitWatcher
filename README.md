@@ -24,6 +24,10 @@ one menu bar icon, any number of vaults, each with its own schedule.
 
 <br>
 
+<img src="docs/demo.gif" alt="Demo: a badge appears on the menu bar icon, the menu lists each vault's status, a reminder dialog lists the changed files, and typing a message and clicking Commit commits and pushes" width="720">
+
+<br>
+
 <img src="docs/screenshots/vaults.png" alt="Settings, Vaults tab: four vaults with their live status (3 files uncommitted, clean, snoozed, not watched) and the selected vault's settings" width="640">
 
 </div>
