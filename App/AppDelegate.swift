@@ -37,6 +37,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         NSApp.mainMenu = mainMenu()
+        // Sparkle asks on the second launch before any check; never for a bare binary without a bundle.
+        if Bundle.main.bundleIdentifier != nil { _ = Updates.controller }
         statusItem.button?.imagePosition = .imageLeading
 
         store.onApply = { [weak self] in self?.applyConfig() }
@@ -194,6 +196,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         menu.addItem(.separator())
+        menu.addItem(withTitle: MainActor.assumeIsolated { Updates.menuTitle }, action: #selector(checkForUpdates), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings…", action: #selector(openSettings), keyEquivalent: ",").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "About \(appName)", action: #selector(about), keyEquivalent: "").target = self
@@ -201,6 +204,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(withTitle: "Quit \(appName)", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
+
+    @objc func checkForUpdates() { MainActor.assumeIsolated { Updates.check() } }  // menu actions run on main
 
     /// Menu item whose action gets its vault back via representedObject.
     @discardableResult

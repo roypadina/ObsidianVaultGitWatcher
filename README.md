@@ -185,8 +185,17 @@ credentials.
 
 ## Privacy
 
-Everything runs on your Mac. The app makes no network connections of its own; the only
-traffic is the `git push` you configure, to your own remote. No analytics, no telemetry.
+Everything runs on your Mac. The app makes no network connections of its own besides the update
+check, and that only with your permission: it asks once (on its second launch) whether to check for
+updates automatically; with your yes it downloads the release feed from GitHub once a day, sending
+nothing about you. The other traffic is the `git push` you configure, to your own remote. No
+analytics, no telemetry.
+
+## Updating
+
+The app asks once whether to check for updates automatically; with your yes it checks once a day and asks before
+installing a new version (**Check for Updates…** in the About window or Settings → About checks now). An in-app
+update needs no `xattr` step. Homebrew users can also run `brew upgrade --cask obsidian-vault-git-watcher`.
 
 ## Build from source
 

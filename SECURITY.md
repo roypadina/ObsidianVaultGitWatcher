@@ -14,7 +14,9 @@ and the report disclosed, with credit unless you prefer otherwise.
 
 ## Scope
 
-The app runs entirely on-device. Its only network traffic is the `git push` you configure,
-to your own remote. Relevant areas: how `config.json` values reach `git` (remote and branch
-names are validated so they can't be read as options), what the commit action stages, and
-the LaunchAgent it installs for launch at login.
+The app runs entirely on-device. Its network traffic is the `git push` you configure, to your
+own remote, and, only if you allow it when asked, the once-a-day update check (it downloads the
+release feed from GitHub and sends nothing about you). Relevant areas: the Sparkle update path,
+how `config.json` values reach `git` (remote and branch names are validated so they can't be
+read as options), what the commit action stages, and the LaunchAgent it installs for launch at
+login.
