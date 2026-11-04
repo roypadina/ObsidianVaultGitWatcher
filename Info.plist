@@ -7,11 +7,15 @@
     <key>CFBundleName</key><string>ObsidianVaultGitWatcher</string>
     <key>CFBundleIconFile</key><string>AppIcon</string>
     <key>CFBundlePackageType</key><string>APPL</string>
-    <key>CFBundleShortVersionString</key><string>0.3.0</string>
-    <key>CFBundleVersion</key><string>7</string>
+    <key>CFBundleShortVersionString</key><string>0.4.0</string>
+    <key>CFBundleVersion</key><string>8</string>
     <key>CFBundleDisplayName</key><string>Obsidian Vault Git Watcher</string>
     <key>NSHumanReadableCopyright</key><string>© 2026 Roy Padina. MIT License.</string>
     <key>LSUIElement</key><true/>
+    <!-- Sparkle updates: the feed is the appcast.xml asset of the latest GitHub release. No
+         SUEnableAutomaticChecks on purpose: Sparkle asks once, since the app makes no network calls unasked. -->
+    <key>SUFeedURL</key><string>https://github.com/roypadina/ObsidianVaultGitWatcher/releases/latest/download/appcast.xml</string>
+    <key>SUPublicEDKey</key><string>qq4oZAVmJanKJ1bTAzGSO94WWX6cx+/5kCjBZxJXEm0=</string>
     <key>LSMinimumSystemVersion</key><string>14.0</string>
 </dict>
 </plist>

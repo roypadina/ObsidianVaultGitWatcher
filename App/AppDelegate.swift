@@ -37,6 +37,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         NSApp.mainMenu = mainMenu()
+        // Sparkle asks on the second launch before any check; never for a bare binary without a bundle.
+        if Bundle.main.bundleIdentifier != nil { _ = Updates.controller }
         statusItem.button?.imagePosition = .imageLeading
 
         store.onApply = { [weak self] in self?.applyConfig() }

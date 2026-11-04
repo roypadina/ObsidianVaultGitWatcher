@@ -118,6 +118,7 @@ struct GeneralPane: View {
                         Text(appName).font(.headline)
                         Text("Version " + (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"))
                             .foregroundStyle(.secondary)
+                        Button("Check for Updates…") { Updates.check() }
                     }
                 }
                 HStack {
