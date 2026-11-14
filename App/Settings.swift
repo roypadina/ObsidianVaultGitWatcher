@@ -16,11 +16,12 @@ private let vaultsSize = CGSize(width: 800, height: 600)
 final class AccessoryWindows: NSObject, NSWindowDelegate {
     static let shared = AccessoryWindows()
 
-    func show(_ window: NSWindow) {
+    func show(_ window: NSWindow, userAction: Bool = true) {
         SupportPrompt.interrupted()
         window.delegate = self
         NSApp.setActivationPolicy(.regular)
-        NSApp.activate()
+        // A user action forces it: on macOS 14+ the front app can refuse the activate() request (window opens behind).
+        if userAction { NSApp.activate(ignoringOtherApps: true) } else { NSApp.activate() }
         window.makeKeyAndOrderFront(nil)
     }
 
@@ -35,11 +36,11 @@ final class AccessoryWindows: NSObject, NSWindowDelegate {
 enum SettingsWindow {
     private static var window: NSWindow?
 
-    static func show(vaultsTab: Bool = false) {
+    static func show(vaultsTab: Bool = false, userAction: Bool = true) {
         let w = window ?? make()
         window = w
         if vaultsTab { (w.contentViewController as? NSTabViewController)?.selectedTabViewItemIndex = 1 }
-        AccessoryWindows.shared.show(w)
+        AccessoryWindows.shared.show(w, userAction: userAction)
     }
 
     private static func make() -> NSWindow {
