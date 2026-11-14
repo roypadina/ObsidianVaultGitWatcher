@@ -17,6 +17,7 @@ final class AccessoryWindows: NSObject, NSWindowDelegate {
     static let shared = AccessoryWindows()
 
     func show(_ window: NSWindow) {
+        SupportPrompt.interrupted()
         window.delegate = self
         NSApp.setActivationPolicy(.regular)
         NSApp.activate()

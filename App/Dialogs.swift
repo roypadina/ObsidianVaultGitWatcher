@@ -75,6 +75,7 @@ func reminderAlert(_ v: Vault, _ changes: String) -> (NSAlert, NSTextField, NSPo
 func askMain(_ v: Vault, _ changes: String) -> (button: String, message: String, snoozeUntil: Date) {
     // AppKit must run on main; the scheduled check calls this from AppDelegate.checkQueue.
     if !Thread.isMainThread { return DispatchQueue.main.sync { askMain(v, changes) } }
+    MainActor.assumeIsolated { SupportPrompt.interrupted() }
     let (alert, field, picker, snoozeChoices) = reminderAlert(v, changes)
 
     // abortModal() is the documented way to end runModal() from a timer -> returns .abort
@@ -145,6 +146,7 @@ func pushNow(_ v: Vault) {
         notify("Pushed", title: v.title)
     } catch {
         logLine("\(v.name): push failed: \(error)")
+        noteGitFailure(v)
         osa(["display alert (item 1 of argv) message (item 2 of argv) as warning"],
             ["Couldn't push \(v.name)", "\(error)\n\nCheck the network and the remote, then choose Push again in the menu bar."])
     }
@@ -158,11 +160,13 @@ func commitAndPush(_ v: Vault, _ msg: String) -> Bool {
         return true
     } catch CommitError.push(let error) {
         logLine("\(v.name): push failed: \(error)")
+        noteGitFailure(v)
         osa(["display alert (item 1 of argv) message (item 2 of argv) as warning"],
             ["\(v.name) is committed, but the push failed", "\(error)\n\nRun `git push` in \(v.path)."])
         return true
     } catch {
         logLine("\(v.name): commit failed: \(error)")
+        noteGitFailure(v)
         osa(["display alert (item 1 of argv) message (item 2 of argv) as critical"],
             ["Couldn't commit \(v.name)", "\(error)"])
         return false

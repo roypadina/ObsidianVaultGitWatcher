@@ -30,6 +30,7 @@ import Sparkle
 
         func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
             MainActor.assumeIsolated {
+                SupportPrompt.interrupted()
                 NSApp.setActivationPolicy(.regular)
                 NSApp.activate()
             }

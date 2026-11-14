@@ -25,6 +25,7 @@ func runScheduledCheck(_ v: Vault) {
     guard step(&s, fp, Date(), v.cfg) else { saveState(v, s); return }
 
     let lines = statusLines(v)
+    noteReminder(v, conflict: lines.contains { changeLine($0).hasPrefix("Conflict: ") })
     if v.cfg.notify == .banner { // a banner can't take an answer: treat it like a dismissed dialog
         notify("\(lines.count) file\(lines.count == 1 ? "" : "s") uncommitted. Commit from the menu bar.", title: v.title)
         logLine("\(v.name): reminder banner, \(lines.count) files")
@@ -59,6 +60,7 @@ func selftest() {
     let t0 = d(2026, 9, 26, 12, 0)
     let hour: TimeInterval = 3600
     var s: State = [:]
+    supportPromptSelftest()
 
     precondition(["M Welcome.md", " M Welcome.md", "?? Daily/", "A  a.md", " D b.md", "R  c.md -> d.md", "UU e.md", "!! f"].map(changeLine)
         == ["Modified: Welcome.md", "Modified: Welcome.md", "New: Daily/", "New: a.md", "Deleted: b.md", "Renamed: c.md -> d.md", "Conflict: e.md", "!! f"], "reminder wording")
