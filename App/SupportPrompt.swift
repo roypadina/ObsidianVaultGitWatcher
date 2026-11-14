@@ -318,16 +318,16 @@ struct SupportPromptView: View {
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var contrast
-    @State private var shown = false
-    @State private var printed: CGFloat = 0  // 0 = paper inside the slot, 1 = fully out
-    @State private var paperHeight: CGFloat = 0
-    @State private var buttonsShown = false
-    @State private var sheen: CGFloat = -1  // sheen band position across the Support button, -1…1
-    @State private var answered = false
-    @State private var bursting = false
-    @State private var thanked = false
-    @State private var leaving = false  // never / final fade: scale 0.94 + fade
-    @State private var flying = false  // snooze: shrink toward the menu-bar icon
+    @SwiftUI.State private var shown = false
+    @SwiftUI.State private var printed: CGFloat = 0  // 0 = paper inside the slot, 1 = fully out
+    @SwiftUI.State private var paperHeight: CGFloat = 0
+    @SwiftUI.State private var buttonsShown = false
+    @SwiftUI.State private var sheen: CGFloat = -1  // sheen band position across the Support button, -1…1
+    @SwiftUI.State private var answered = false
+    @SwiftUI.State private var bursting = false
+    @SwiftUI.State private var thanked = false
+    @SwiftUI.State private var leaving = false  // never / final fade: scale 0.94 + fade
+    @SwiftUI.State private var flying = false  // snooze: shrink toward the menu-bar icon
 
     private static let width: CGFloat = 340
     private static let radius: CGFloat = 18
@@ -538,7 +538,7 @@ private struct SupportButtonStyle: ButtonStyle {
     private struct StyledButton: View {
         let cfg: Configuration
         let prominent: Bool
-        @State private var hover = false
+        @SwiftUI.State private var hover = false
         @Environment(\.isEnabled) private var enabled
 
         var body: some View {
@@ -561,7 +561,7 @@ private struct SupportButtonStyle: ButtonStyle {
 
 /// Coffee cups and beans flying out of the card's centre, once.
 private struct CoffeeBurst: View {
-    @State private var fired = false
+    @SwiftUI.State private var fired = false
 
     var body: some View {
         ZStack {
