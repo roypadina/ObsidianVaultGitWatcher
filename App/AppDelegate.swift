@@ -16,6 +16,7 @@ func promptText(title: String, message: String, defaultValue: String, confirm: S
     field.setAccessibilityLabel(fieldLabel)
     alert.accessoryView = field
     alert.window.initialFirstResponder = field
+    MainActor.assumeIsolated { SupportPrompt.interrupted() }
     NSApp.activate()
     return alert.runModal() == .alertFirstButtonReturn ? field.stringValue : nil
 }
@@ -54,6 +55,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSWorkspace.shared.notificationCenter.addObserver(
             self, selector: #selector(didWake), name: NSWorkspace.didWakeNotification, object: nil)
 
+        MainActor.assumeIsolated { SupportPrompt.start() }
         applyConfig() // also the catch-up check: covers login and "was quit for a while"
         logLine("Started, watching \(store.active.count) of \(store.vaults.count) vaults")
         // first run of an installed copy: start at login by default (a reminder app has to run)
@@ -123,6 +125,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func show(_ statuses: [(Vault, Status)]) {
         refreshPending = false
+        let supportShowing = MainActor.assumeIsolated {
+            SupportPrompt.update(statuses)
+            return SupportPrompt.showing
+        }
         store.statuses = Dictionary(statuses.map { ($0.0.cfg.id, $0.1) }, uniquingKeysWith: { a, _ in a })
         let active = statuses.filter { $0.0.cfg.enabled }
         // one icon for all vaults: the most urgent state wins
@@ -136,8 +142,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             button.toolTip = label
             button.title = store.config.showFileCount && files > 0 ? "\(files)" : ""
         }
-        statusItem.isVisible = store.config.menuBarIcon == .always || ["pending", "error"].contains(state)
-        statusItem.menu = buildMenu(active)
+        // the card's answers are mirrored in the menu: keep the icon up while it shows
+        statusItem.isVisible = store.config.menuBarIcon == .always || ["pending", "error"].contains(state) || supportShowing
+        statusItem.menu = buildMenu(active, supportShowing: supportShowing)
         rearmTimer()
         if refreshAgain { refreshAgain = false; refreshDisplay() }
     }
@@ -156,8 +163,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// One submenu per watched vault, titled with the vault name and its status.
-    func buildMenu(_ statuses: [(Vault, Status)]) -> NSMenu {
+    func buildMenu(_ statuses: [(Vault, Status)], supportShowing: Bool) -> NSMenu {
         let menu = NSMenu()
+        if supportShowing { // the receipt card is mouse-only; same three answers here
+            menu.addItem(.sectionHeader(title: "Support \(appName)"))
+            for (tag, title) in ["Tip a Coffee on Ko-fi ☕", "Ask Me in 2 Weeks", "Don't Ask Again"].enumerated() {
+                let item = menu.addItem(withTitle: title, action: #selector(answerSupport), keyEquivalent: "")
+                item.target = self
+                item.tag = tag
+            }
+            menu.addItem(.separator())
+        }
         if statuses.isEmpty {
             menu.addItem(withTitle: store.config.vaults.isEmpty ? "No vaults yet" : "No vault is watched", action: nil, keyEquivalent: "")
         }
@@ -201,6 +217,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         menu.addItem(.separator())
         menu.addItem(withTitle: "About \(appName)", action: #selector(about), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Support on Ko-fi ☕", action: #selector(koFi), keyEquivalent: "").target = self
+        let preview = menu.addItem(withTitle: "Show Support Prompt Now", action: #selector(previewSupport), keyEquivalent: "")
+        preview.target = self
+        preview.keyEquivalentModifierMask = .option // hold ⌥: preview the support card without recording an ask
+        preview.isAlternate = true
         menu.addItem(withTitle: "Quit \(appName)", action: #selector(quit), keyEquivalent: "q").target = self
         return menu
     }
@@ -324,6 +344,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func openHelp() { NSWorkspace.shared.open(repoURL.appendingPathComponent("wiki")) }
 
     @objc func koFi() { NSWorkspace.shared.open(koFiURL) }
+
+    @objc func answerSupport(_ sender: NSMenuItem) {
+        let answer: [SupportPromptState.Answer] = [.support, .snooze, .never]
+        MainActor.assumeIsolated { SupportPanel.respond(answer[sender.tag]); SupportPanel.close() }
+    }
+
+    @objc func previewSupport() { MainActor.assumeIsolated { SupportPrompt.present(record: false) } }
 
     @objc func quit() { NSApp.terminate(nil) }
 }

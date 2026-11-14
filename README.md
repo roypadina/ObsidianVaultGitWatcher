@@ -252,6 +252,8 @@ Free, open-source Mac menu-bar apps and terminal tools, all on one site: **[apps
 If Obsidian Vault Git Watcher keeps your notes safely pushed, you can support its development —
 it's optional and always appreciated.
 
+Once in a while, Obsidian Vault Git Watcher asks too. A small receipt card shows up a few seconds after a vault it reminded you about is back in sync. It only appears after more than 15 reminders have been resolved, and at most 3 times a year. "Ask me in 2 weeks" snoozes it, and "Nope, don't ask again" keeps it away until the next major version. If a reminder or window of the app opens while the card is still open, or you leave it unanswered for 5 minutes, it closes and counts as a snooze. It never takes keyboard focus.
+
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/roypadina)
 
 A ⭐ on the repo helps just as much.

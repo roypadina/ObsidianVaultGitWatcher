@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Ko-fi support card: about 10 seconds after a vault the app reminded you about is back in sync (committed, and pushed when it pushes), a small receipt card may ask for a tip. It waits until 7 days after you install or update to this version, and until more than 15 reminders have been resolved. It asks at most 3 times a year, and never while a reminder, prompt or window of the app is open, while another vault still has uncommitted or unpushed changes, within an hour of a failed commit or push or after a conflict, when a vault needed more than one reminder, while you are away or while the microphone is in use. "Ask me in 2 weeks" snoozes it. "Nope, don't ask again" keeps it quiet until the next major version, and for at least 90 days. A card still open when a reminder, prompt or window of the app opens closes and counts as a snooze; so does a card left unanswered for 5 minutes while you are at the Mac. The card never takes keyboard focus, and the same three choices are in the status menu for keyboard and VoiceOver users. Hold ⌥ in the status menu for "Show Support Prompt Now" to preview it.
+
 ## [0.4.0] - 2026-11-04
 
 ### Added
