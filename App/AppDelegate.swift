@@ -17,7 +17,8 @@ func promptText(title: String, message: String, defaultValue: String, confirm: S
     alert.accessoryView = field
     alert.window.initialFirstResponder = field
     MainActor.assumeIsolated { SupportPrompt.interrupted() }
-    NSApp.activate()
+    // Forceful: only menu items (Commit…, Snooze…) ask, and on macOS 14+ the front app can refuse activate() (alert behind).
+    NSApp.activate(ignoringOtherApps: true)
     return alert.runModal() == .alertFirstButtonReturn ? field.stringValue : nil
 }
 
@@ -65,7 +66,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         if !UserDefaults.standard.bool(forKey: "didShowWelcome") {
             UserDefaults.standard.set(true, forKey: "didShowWelcome")
             WelcomeWindow.show() // its Open Settings button leads to the Vaults pane
-        } else if store.config.vaults.isEmpty { openSettings() } // unreadable config, or every vault removed: nothing to watch yet
+        } else if store.config.vaults.isEmpty { SettingsWindow.show(userAction: false) } // unreadable config, or every vault removed: nothing to watch yet (may be a login launch: no focus steal)
     }
 
     /// Opening the app again (Finder, Spotlight) while it runs shows Settings: the way
