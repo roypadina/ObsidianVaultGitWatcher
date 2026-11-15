@@ -2,6 +2,7 @@
 // Every control edits `store.config` directly; ConfigStore saves config.json and the app
 // re-applies it live (AppDelegate.applyConfig). Text that needs checking is held as a
 // draft and only written once valid, with the problem shown under the field.
+import OSLog
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
@@ -15,6 +16,7 @@ private let vaultsSize = CGSize(width: 800, height: 600)
 @MainActor
 final class AccessoryWindows: NSObject, NSWindowDelegate {
     static let shared = AccessoryWindows()
+    static let log = Logger(subsystem: "com.roypadina.ObsidianVaultGitWatcher", category: "activation")
 
     func show(_ window: NSWindow, userAction: Bool = true) {
         SupportPrompt.interrupted()
@@ -26,24 +28,26 @@ final class AccessoryWindows: NSObject, NSWindowDelegate {
         if userAction { keepFront(window) }
     }
 
-    /// shortcut: ~0.5 s after the .accessory → .regular switch macOS hands activation back to the previous app (traced in
-    /// PullPing: Settings behind Ghostex, no click). Take it back once unless the user clicked elsewhere meanwhile; drop when macOS stops.
-    /// Limit: a keyboard switch (⌘-Tab, a launcher hotkey) within the 1.5 s is pulled back once. nil = Sparkle's update window.
+    /// shortcut: ~0.5 s after the .accessory → .regular switch macOS hands activation back to the previous app (traced:
+    /// Settings behind Ghostex, no click). Take it back once, within 1.5 s of the show, and only if there was no click or key
+    /// press anywhere since (asked of the window server when activation goes, so no event monitor can lose the race: a click in
+    /// Edge stole focus back, traced); drop when macOS stops. nil = Sparkle's update window.
     func keepFront(_ window: NSWindow?) {
-        var clicked = false, done = false
-        let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]) { _ in clicked = true }
+        let shown = Date()
+        var done = false
         let observer = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated {
-                guard !clicked, !done, NSApp.activationPolicy() == .regular, window?.isVisible ?? true else { return }
+                let elapsed = Date().timeIntervalSince(shown)
+                let input = [CGEventType.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown]
+                    .map { CGEventSource.secondsSinceLastEventType(.hidSystemState, eventType: $0) }.min() ?? 0
+                guard !done, elapsed < 1.5, input > elapsed, NSApp.activationPolicy() == .regular, window?.isVisible ?? true else { return }
                 done = true
+                Self.log.notice("keepFront: took activation back from \(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-", privacy: .public) \(Int(elapsed * 1000)) ms after showing \(window?.title ?? "the update window", privacy: .public)")
                 NSApp.activate(ignoringOtherApps: true)
                 window?.makeKeyAndOrderFront(nil)
             }
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-            monitor.map(NSEvent.removeMonitor)
-            NotificationCenter.default.removeObserver(observer)
-        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { NotificationCenter.default.removeObserver(observer) }
     }
 
     func windowWillClose(_ notification: Notification) {
